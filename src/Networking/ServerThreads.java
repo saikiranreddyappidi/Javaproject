@@ -21,11 +21,11 @@ public class ServerThreads {
                     try {
                         Thread.sleep(5000); // sleep for 5 seconds before sending the next broadcast
                     } catch (InterruptedException e) {
-                        e.printStackTrace();
+                        e.fillInStackTrace();
                     }
                 }
             } catch (IOException e) {
-                e.printStackTrace();
+                e.fillInStackTrace();
             }
         }).start();
 
@@ -42,13 +42,13 @@ public class ServerThreads {
                     try {
                         handleClient(clientSocket);
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        e.fillInStackTrace();
                     }
                 }).start();
             }
         }
         catch (Exception e) {
-            e.printStackTrace();
+            e.fillInStackTrace();
         }
     }
 
@@ -60,19 +60,18 @@ public class ServerThreads {
             String dataType = dataInputStream.readUTF(); // read data type from client
 
             switch (dataType) {
-                case "text":
+                case "text" -> {
                     String message = dataInputStream.readUTF(); // read message from client
                     System.out.println("Received message: " + message + " from " + clientSocket.getRemoteSocketAddress());
-                    break;
-                case "file":
+                }
+                case "file" -> {
 //                    save file name with ip address like ''192.168.0.105_received_file.pdf''
                     String fileName = clientSocket.getRemoteSocketAddress().toString().replace("/", "").replace(":", "_") + "_received_file.pdf";
                     receiveFile(fileName, dataInputStream); // read file from client
-                    break;
+                }
                 // Add more cases here to handle other types of data
-                default:
-                    System.out.println("Unknown data type received from " + clientSocket.getRemoteSocketAddress());
-                    break;
+                default ->
+                        System.out.println("Unknown data type received from " + clientSocket.getRemoteSocketAddress());
             }
 
             dataInputStream.close();
@@ -80,7 +79,7 @@ public class ServerThreads {
             clientSocket.close();
         } catch (IOException e) {
             System.out.println("Error handling client " + clientSocket.getRemoteSocketAddress());
-            e.printStackTrace();
+            e.fillInStackTrace();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

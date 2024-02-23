@@ -10,13 +10,12 @@ public class ClientServer {
 
     public static void main(String[] args) {
         try {
-            // Listen for the server's IP broadcast
             DatagramSocket datagramSocket = new DatagramSocket(8888);
             byte[] datagramBuffer = new byte[1024];
             DatagramPacket packet = new DatagramPacket(datagramBuffer, datagramBuffer.length);
             datagramSocket.receive(packet);
             String broadcastMessage = new String(packet.getData(), 0, packet.getLength());
-            System.out.println("Received message: " + broadcastMessage); // print statement
+            System.out.println("Received message: " + broadcastMessage);
             if (broadcastMessage.equals("SERVER_IP_BROADCAST")) {
                 String serverIP = packet.getAddress().getHostAddress();
                 System.out.println("Server IP is: " + serverIP);
@@ -24,22 +23,22 @@ public class ClientServer {
                 Scanner scanner = new Scanner(System.in);
 
                 while (true) {
-                    // Connect to the server
                     Socket socket = new Socket(serverIP, 900);
-                    DataOutputStream dataOutputStream = new DataOutputStream(socket.getOutputStream());
 
-                    try {
+                    try (socket; DataOutputStream dataOutputStream = new DataOutputStream(socket.getOutputStream())) {
                         System.out.println("Enter the type of data you want to send (text/file):");
                         String dataType = scanner.nextLine();
                         dataOutputStream.writeUTF(dataType);
 
                         switch (dataType) {
-                            case "text":
+                            case "text" -> {
                                 System.out.println("Enter the text message:");
                                 String message = scanner.nextLine();
                                 dataOutputStream.writeUTF(message);
-                                break;
-                            case "file":
+                                double transmissionDelayText = calculateTransmissionDelay(message.getBytes().length, 300);
+                                System.out.println("Transmission Delay for text: " + transmissionDelayText + " seconds");
+                            }
+                            case "file" -> {
                                 System.out.println("Enter the file path:");
                                 String filePath = scanner.nextLine();
                                 File file = new File(filePath);
@@ -50,36 +49,45 @@ public class ClientServer {
                                 int bytes;
                                 long totalBytesSent = 0;
                                 long startTime = System.currentTimeMillis();
-                                Thread.sleep(1); // Add a small delay to avoid division by zero
+                                Thread.sleep(1);
                                 double speed = 0;
                                 while ((bytes = fileInputStream.read(buffer)) != -1) {
                                     dataOutputStream.write(buffer, 0, bytes);
                                     totalBytesSent += bytes;
                                     long currentTime = System.currentTimeMillis();
                                     speed = (double) totalBytesSent / ((currentTime - startTime) / 1000.0);
-                                    System.out.print("-"); // Print a hyphen for each chunk of data sent
+                                    System.out.print("-");
+                                    double transmissionDelayChunk = calculateTransmissionDelay(bytes, 300);
+                                    System.out.println("Transmission Delay for this chunk: " + transmissionDelayChunk + " seconds");
                                 }
+                                long endTime = System.currentTimeMillis();
+                                double transmissionRate = (double) totalBytesSent / ((endTime - startTime) / 1000.0);
                                 System.out.println("\nFile sent at speed: " + speed + " bytes/s");
+                                System.out.println("Transmission rate: " + transmissionRate + " bytes/s");
+                                double transmissionDelayFile = calculateTransmissionDelay(fileSize, 300);
+                                System.out.println("Transmission Delay for file: " + transmissionDelayFile + "ms");
                                 fileInputStream.close();
-                                break;
-                            default:
-                                System.out.println("Unknown data type. Please enter 'text' or 'file'.");
-                                break;
+                            }
+                            default -> System.out.println("Unknown data type. Please enter 'text' or 'file'.");
                         }
 
                     } catch (IOException e) {
                         System.out.println("Error sending data. Attempting to reconnect...");
-                        e.printStackTrace();
-                    } finally {
-                        dataOutputStream.close();
-                        socket.close();
+                        e.fillInStackTrace();
                     }
                 }
             }
             datagramSocket.close();
         } catch (Exception e) {
             System.out.println("Error connecting to server");
-            e.printStackTrace();
+            e.fillInStackTrace();
         }
+    }
+
+    public static double calculateTransmissionDelay(double packetSizeBytes, double linkSpeedMbps) {
+        double linkSpeedBps = linkSpeedMbps * 1_000_000;
+        double packetizationDelaySeconds = packetSizeBytes * 8 / linkSpeedBps;
+        double serializationDelaySeconds = packetSizeBytes * 8 / linkSpeedBps;
+        return packetizationDelaySeconds + serializationDelaySeconds;
     }
 }
